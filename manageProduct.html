@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MANAGE PRODUCTS</title>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Serif&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.4/xlsx.full.min.js"></script>
+    <style>
+    /* Font và giao diện chung */
+    body {
+        font-family: 'Noto Serif', serif;
+        background-color: #79b1f5;
+        color: #001aaa;
+    }
+
+    /* Kích thước và hiệu ứng hover cho nút */
+    button {
+        background-color: #14d9c5;
+        cursor: pointer;
+        color: white;
+        border: 0;
+        padding: 10px 20px;
+        border-radius: 5px;
+        transition: transform 0.3s ease-in-out, background-color 0.3s ease-in-out, color 0.3s ease-in-out;
+    }
+
+    button:hover {
+        transform: scale(1.05); /* Phóng to khi hover */
+        background-color: #1ac6b5; /* Màu khi hover */
+        color: black;
+        box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.5);
+    }
+
+    /* Kích thước và hiệu ứng hover cho input */
+    input {
+        width: 300px;
+        padding: 10px;
+        border-radius: 5px;
+        border: 0.2px solid black;
+        transition: box-shadow 0.2s ease-in-out; /* Hiệu ứng hover mượt mà */
+    }
+
+    input:hover {
+        box-shadow: 0 0 5px rgba(0, 0, 0, 0.3); /* Đổi hiệu ứng khi hover */
+    }
+
+    /* Phần danh sách sản phẩm */
+    .listProducts,
+    .listProducts tr:first-child {
+        font-family: 'Noto Serif', serif;
+        padding: 10px;
+        border: 1px solid white;
+        color: #3c7363;
+        background-color: #e8f1fd;
+    }
+
+    .listProducts tr:first-child {
+        font-weight: 800;
+        background-color: #027353;
+        color: #e8f1fd;
+    }
+
+    /* Hiệu ứng hover cho hàng trong danh sách sản phẩm */
+    .listProducts tr:hover {
+        background-color: #d4e8e1; /* Màu nền khi hover */
+        transition: background-color 0.3s ease-in-out;
+    }
+
+    /* Kích thước ảnh sản phẩm */
+    .imageProducts img {
+        width: 100px;
+        height: 100px;
+        object-fit: cover;
+        background-color: cornsilk;
+    }
+
+    /* Bố cục chính và căn chỉnh */
+    .mainProducts {
+        display: flex;
+        justify-content: space-between; /* Các phần cách nhau bằng khoảng trống */
+        gap: 50px;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    /* phần nhập thông tin */
+    .inputProducts {
+        width: 50%;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+
+    /* phần hiển thị kết quả */
+    .outputProducts {
+        width: 50%;
+        padding: 20px;
+        box-sizing: border-box;
+    }
+    
+    .mainProducts p {
+        font-weight: 800;
+    }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center;"> PRODUCT LIST </h1>
+    <main class="mainProducts">
+   
+    <div class="inputProducts">
+        <p>Enter name product: </p>
+        <input type="text" id="newP" placeholder="Tên sản phẩm">
+        <br> <span id="errorName" style="font-size: 10px; display:none; margin-left: 10px;">*Please enter name</span>
+        <p>Enter amount product: </p>
+        <input type="number" id="amountP" placeholder="Nhập số lượng" min="0">  <br>
+        <span id="errorAmount" style="font-size: 10px; display:none; margin-left: 10px;">*Please enter amount</span>
+        <!-- <input type="text" id="imageP" placeholder="Nhập link ảnh"> -->
+        <form action="" style="margin-bottom: 10px;">
+            <img src="" alt="" id="image" width="100px" height="100px" style="display: block; margin-bottom: 10px; background-color:#e8f1fd;">
+            <input type="file" name="" id="imageFile" accept="image/gif,image/png,image/jpeg" onchange="chooseFileCreate(this)" >
+        </form>
+        <button onclick="createNewProducts()">Create</button>
+        <button onclick="searchProducts()">Search</button>
+    </div>
+    <div class="outputProducts">
+        <table class="listProducts">
+            <tr>
+                <td style="font-weight: 800; background-color:#027353; color: #e8f1fd;"> Product name </td>
+                <td style="font-weight: 800; background-color:#027353; color: #e8f1fd;"> Image </td>
+                <td style="font-weight: 800; background-color:#027353; color: #e8f1fd;"> Amount </td>
+                <td style="font-weight: 800; background-color:#027353; color: #e8f1fd;"> Action </td>
+            </tr>
+            <tbody id="products">
+            </tbody>
+        </table>
+        <button onclick="exportToExcel()">Xuất Excel</button>
+    </div>
+</main>
+</body>
+<script>
+    let imgTemp;
+let imgTemp_1;
+class Product {
+    constructor(name, amount, image) {
+        this.name = name;
+        this.amount = amount;
+        this.image = image;
+    }
+}
+let amount = [40, 35, 50, 45];
+let productsList = [
+    new Product("Iphone 15 Promax", 40, "https://img.tgdd.vn/imgt/f_webp,fit_outside,quality_100/https://cdn.tgdd.vn/Products/Images/42/305658/s16/iphone-15-pro-max-blue-thumbtz-650x650.png"),
+    new Product("Samsung Galaxy S23 Ultra", 35, "https://cdn-amz.woka.io/images/I/6144qsplHQL._SR900,900_.jpg"),
+    new Product("Samsung Z Fold5", 50, "https://www.nguyenkim.com/images/thumbnails/600/336/detailed/885/10055891-dien-thoai-samsung-galaxy-z-fold-5-5g-12gb-256gb-den-1.jpg"),
+    new Product("Surface Duo", 45, "https://surfacestore.com.vn/wp-content/uploads/2022/10/surface-pro-9-surfacestore-img.jpg")
+];
+
+// Hàm hiển thị
+function renderProducts() {
+    let content = "";
+    for (let i = 0; i < productsList.length; i++) {
+        content += "<tr>" +
+            "<td class='nameProducts'>" + productsList[i].name + "</td>" +
+            "<td class='imageProducts'><img src='" + productsList[i].image + "'></td>" +
+            "<td class='amountProducts'>" + productsList[i].amount + "</td>" +
+            "<td><button onclick='editProduct(" + i + ")'>Edit</button> <button onclick='deleteProduct(" + i + ")'>Delete</button></td>" +
+            "</tr>";
+    }
+    document.getElementById("products").innerHTML = content;
+}
+
+// Hàm để tạo sản phẩm mới
+// Có điều kiện để tạo trùng sản phẩm thì alert ra hộp thoại
+
+function createNewProducts() {
+    let newName = document.getElementById("newP").value;
+    let newAmount = parseInt(document.getElementById("amountP").value);
+    let newImage = document.getElementById("image").getAttribute("src");
+
+    if (newName.trim() === '' || isNaN(newAmount)) {
+        alert("Hãy nhập lại thông tin sản phẩm");
+        return;
+    }
+
+    for (let i = 0; i < productsList.length; i++) {
+        if (newName === productsList[i].name) {
+            alert("Sản phẩm đã tồn tại");
+            return;
+        }
+    }
+// Thêm sản phẩm mới vào danh sách
+    let newProduct = new Product(newName, newAmount, newImage);
+    productsList.push(newProduct);
+    renderProducts();
+
+// Xóa dữ liệu nhập sau khi thêm sản phẩm thành công
+    document.getElementById("newP").value = "";
+    document.getElementById("amountP").value = "";
+    document.getElementById("image").setAttribute("src", "");
+}
+// Hàm để xóa sản phẩm 
+// có tham số để truyền vào vị trí cần xóa
+function deleteProduct(index) {
+    let confirmDelete = confirm("Bạn có chắc là xoá sản phẩm này không?");
+    if (confirmDelete) {
+        productsList.splice(index, 1);
+        renderProducts();
+    }
+}
+
+// Hàm để edit
+// Sửa sản phẩm theo tham số index
+// Cho người dụng nhập vào sp mới
+// Gán lại sp cho sp cũ
+// hiển thị lại danh sách 
+let editCheck = true; //biến để edit hàng này thì không được edit hàng khác
+
+function editProducts(index) {
+    let check = document.getElementsByClassName('nameProducts')[index].innerHTML;
+    let check_1 = document.getElementsByClassName('amountProducts')[index].innerHTML;
+
+    if (check == productsList[index].name && check_1 == amount[index] && editCheck == true) {
+        document.getElementsByClassName('nameProducts')[index].innerHTML =  '<input type="text"  id="changeNameProducts" value="' + check + '">';
+        document.getElementsByClassName('imageProducts')[index].innerHTML = '<input type="file"  id="changeImageProducts" onChange="chooseFile(this)" >';
+        document.getElementsByClassName('amountProducts')[index].innerHTML = '<input type="number"  id="changeAmountProducts" min="0" value="' + check_1 + '">';
+        editCheck = false;
+    }
+    if (check != productsList[index].name && check_1 != amount[index] && editCheck == false) {
+        productsList[index].name = document.getElementById("changeNameProducts").value;
+        document.getElementsByClassName('nameProducts')[index].innerHTML = productsList[index].name;
+        amount[index] = parseInt(document.getElementById("changeAmountProducts").value);
+        document.getElementsByClassName('amountProducts')[index].innerHTML = amount[index];
+        images[index] = document.getElementById("changeImageProducts").value;
+        document.getElementsByClassName('imageProducts')[index].innerHTML = images[index];
+    
+        images[index] = imgTemp;
+        editCheck = true;
+        showAllProducts();
+    }
+}
+
+
+// Hàm để tìm kiếm
+function searchProducts() {
+    let productName = document.getElementById("newP").value.toLowerCase(); // Chuyển đổi thành chữ thường để tìm kiếm không phân biệt hoa thường
+    if (productName === "") return showAllProducts();
+    
+    var productSearch = [];
+    var amountSearch = [];
+    var imagesSearch = [];
+    
+    for (let i = 0; i < productsList.length; i++) {
+        if (productsList[i].name.toLowerCase().includes(productName)) {
+            productSearch.push(productsList[i].name);
+            amountSearch.push(productsList[i].amount);
+            imagesSearch.push(images[i]);
+        }
+    }
+    
+    let content = "";
+    for (let i = 0; i < productSearch.length; i++) {
+        content += "<tr>" +
+            "<td>" + productSearch[i] + "</td>" +
+            "<td><img src='" + imagesSearch[i] + "'></td>" +
+            "<td>" + amountSearch[i] + "</td>" +
+            "<td><button onclick='editProducts(" + i + ")'>Sửa</button> <button onclick='deleteProduct(" + i + ")'>Xóa</button></td>" +
+            "</tr>";
+    }
+    document.getElementById("products").innerHTML = content;
+}
+//hàm upload ảnh phần edit
+function chooseFile(fileInput) {
+    if (fileInput.files && fileInput.files[0]) {
+        let reader = new FileReader();
+
+        reader.onload = function (e) {
+        imgTemp=e.target.result;
+    }
+        reader.readAsDataURL(fileInput.files[0]);
+        console.log(fileInput.files[0])
+    }
+}
+// hàm upload ảnh phần create
+function chooseFileCreate(fileInput) {
+    if (fileInput.files && fileInput.files[0]) {
+        let reader = new FileReader();
+
+        reader.onload = function (e) {
+            document.getElementById('image').setAttribute('src', e.target.result);
+        }
+        reader.readAsDataURL(fileInput.files[0]);
+        console.log(fileInput.files[0])
+    }
+}
+function exportToExcel() {
+    const table = document.querySelector('.listProducts'); // Lấy bảng danh sách sản phẩm
+
+    // Tạo một bảng Excel mới
+    const wb = XLSX.utils.table_to_book(table, { sheet: "Sheet JS" });
+
+    // Chuyển đổi thành blob
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', bookSST: true, type: 'binary' });
+
+    // Tạo tập tin Excel từ blob và tải về
+    function s2ab(s) {
+        const buf = new ArrayBuffer(s.length);
+        const view = new Uint8Array(buf);
+        for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+        return buf;
+    }
+
+    const blob = new Blob([s2ab(wbout)], { type: 'application/octet-stream' });
+    const fileName = 'product_list.xlsx';
+
+    if (navigator.msSaveBlob) { // IE10+
+            navigator.msSaveBlob(blob, fileName);
+    } else {
+        const link = document.createElement('a');
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute('href', url);
+            link.setAttribute('download', fileName);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    }
+}
+</script>
+</html>
